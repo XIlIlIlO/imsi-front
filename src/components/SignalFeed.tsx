@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Signal, Timeframe } from "../api/types";
 import { fetchRecentSignals } from "../api/rest";
 import { connectSignalsWs, type ManagedWs } from "../api/ws";
-import SignalBadge, { isRealtimeCandle } from "./SignalBadge";
+import SignalBadge, { isRealtimeCandle, isRealtimeOrPrevCandle } from "./SignalBadge";
 import TimeframeSelector from "./TimeframeSelector";
 
 interface Props {
@@ -94,8 +94,21 @@ export default function SignalFeed({ onSignalClick }: Props) {
     return () => clearInterval(iv);
   }, []);
 
-  // Only show signals from the latest candle of each timeframe
-  const realtime = signals.filter((s) => isRealtimeCandle(s.time, s.timeframe));
+  // Per-timeframe: if current bucket has signals → show current only
+  // If current bucket is empty → fallback to include previous bucket (no gap on transition)
+  const realtime = (() => {
+    const hasCurrentBucket = new Set<string>();
+    for (const s of signals) {
+      if (isRealtimeCandle(s.time, s.timeframe)) {
+        hasCurrentBucket.add(s.timeframe);
+      }
+    }
+    return signals.filter((s) =>
+      hasCurrentBucket.has(s.timeframe)
+        ? isRealtimeCandle(s.time, s.timeframe)
+        : isRealtimeOrPrevCandle(s.time, s.timeframe)
+    );
+  })();
   const filtered = filter === "all"
     ? realtime
     : realtime.filter((s) => s.timeframe === filter);

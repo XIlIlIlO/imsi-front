@@ -30,11 +30,18 @@ export function isRealtimeCandle(signalTime: number, timeframe: string): boolean
   const signalBucket = Math.floor(signalTime / period) * period;
 
   if (timeframe === "1m") {
-    // 1m: backend filters incomplete candle, so latest signal = previous minute
     return signalBucket >= currentBucketStart - period;
   }
-  // 3m~1h: only current ongoing bucket (has aggregated data from completed 1m)
   return signalBucket === currentBucketStart;
+}
+
+/** Includes previous bucket too (fallback when current bucket has no signals) */
+export function isRealtimeOrPrevCandle(signalTime: number, timeframe: string): boolean {
+  const period = TF_SECONDS[timeframe] ?? 60;
+  const now = Math.floor(Date.now() / 1000);
+  const currentBucketStart = Math.floor(now / period) * period;
+  const signalBucket = Math.floor(signalTime / period) * period;
+  return signalBucket >= currentBucketStart - period;
 }
 
 interface EnrichedSignal extends Signal {
