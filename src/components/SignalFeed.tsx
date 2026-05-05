@@ -73,10 +73,15 @@ export default function SignalFeed({ onSignalClick }: Props) {
   // Periodically sync with backend to remove deleted signals
   useEffect(() => {
     const iv = setInterval(() => {
-      fetchRecentSignals("all", 500).then((res) => {
-        const fresh = res.signals.map((s) => enrichSignal(s, false));
-        fresh.sort((a, b) => b.time - a.time);
-        setSignals(capPerTimeframe(fresh));
+      Promise.all(
+        ALL_TF.map((tf) => fetchRecentSignals(tf, 400))
+      ).then((results) => {
+        const all: EnrichedSignal[] = [];
+        results.forEach((res) => {
+          res.signals.forEach((s) => all.push(enrichSignal(s, false)));
+        });
+        all.sort((a, b) => b.time - a.time);
+        setSignals(capPerTimeframe(all));
       }).catch(() => {});
     }, 30_000);
     return () => clearInterval(iv);
