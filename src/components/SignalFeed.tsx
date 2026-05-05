@@ -21,12 +21,15 @@ function enrichSignal(sig: Signal, isLive: boolean): EnrichedSignal {
 const ALL_TF = ["1m", "3m", "5m", "15m", "30m", "1h"];
 const PER_TF_LIMIT = 80;
 
-/** Keep at most 80 signals per timeframe, sorted newest first */
+/** Keep at most 80 signals per timeframe, deduplicated by ID, sorted newest first */
 function capPerTimeframe(signals: EnrichedSignal[]): EnrichedSignal[] {
+  const seen = new Set<string>();
   const buckets: Record<string, EnrichedSignal[]> = {};
   for (const tf of ALL_TF) buckets[tf] = [];
 
   for (const s of signals) {
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
     const b = buckets[s.timeframe];
     if (b && b.length < PER_TF_LIMIT) b.push(s);
   }
